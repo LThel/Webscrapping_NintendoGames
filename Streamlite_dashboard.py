@@ -4,13 +4,19 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
+import plotly.graph_objects as go
+import plotly.express as px
 
 
-df_sales= pd.read_csv(r"C:\Users\Gabriel\Documents\GitHub\TeamProject_NintendoGames\TeamProject_NintendoGames\df_top.csv")
+
+
 #Import data
-df = pd.read_csv(r"C:\Users\Gabriel\Documents\GitHub\TeamProject_NintendoGames\data.csv")
-#getting my code right(gabriel)
+df_sales=pd.read_csv("df_top.csv")
+df_sales = df_sales[['Names', 'total_shipped_clean']]
+df = pd.read_csv("data.csv")
 Nintendodb = df
+
+#getting my code right(gabriel)
 #Adjust the dataframe
 #Adjust the columns of the data set (main_genre and year)
 df['year'] = df['date'].str.split(',').str[1].str.strip()
@@ -58,7 +64,7 @@ dash = st.sidebar.radio(
     "What dashboard do you want to see ?",
     ('What happened to games?', 'Clash & Platforms', 'Tips for your game', "What about Sales?"))
 
-if dash == "What happened to games?":
+if dash == "What happened to the games ?":
     st.header("What Happened to games?")
     st.subheader("Are games getting worst as years go by?")
     st.header("")
@@ -98,10 +104,67 @@ if dash == "What happened to games?":
         plt.title('Customer Score per platform')
         st.pyplot((viz_bar3.figure))
 
-#elif dash == 'Clash & Platforms'
+elif dash == 'Clash & Platforms':
+    # Define the colors to use for the charts
+    colors = ['orange', 'blue', 'green', 'red', 'purple', 'gray', 'cyan', 'magenta', 'yellow', 'brown']
+    # Create a Streamlit app
+    st.title('Clash & Platforms Dashboard')
+    # Add a chart showing the number of games per platform as a pie chart
+    platform_counts = df['platform'].value_counts().sort_values(ascending=False)
+    fig_pie = go.Figure(go.Pie(
+        labels=platform_counts.index,
+        values=platform_counts.values,
+        marker=dict(colors=colors[:len(platform_counts)])
+    ))
+    fig_pie.update_layout(
+        title='Number of Games per Platform (Pie Chart)',
+    )
+    st.plotly_chart(fig_pie)
+    # Add a chart showing the number of games per platform as a bar chart
+    fig_bar, ax = plt.subplots(figsize = (3, 1.5))
+    fig_bar = go.Figure(go.Bar(
+        x=platform_counts.index,
+        y=platform_counts.values,
+        marker_color=colors[:len(platform_counts)],
+        text=platform_counts.values,
+        textposition='inside',
+    ))
+    fig_bar.update_layout(
+        title='Number of Games per Platform (Bar Chart)',
+        xaxis_title='Platform',
+        yaxis_title='Number of Games')
+    
+    st.plotly_chart(fig_bar)
 
+    # Create separate DataFrames for Super Mario and Pokemon games
+    mario_df = df[df['title'].str.contains('Mario')]
+    pokemon_df = df[df['title'].str.contains('Pokemon')]
+    # Compare the number of games released for each franchise
+    mario_count = len(mario_df)
+    pokemon_count = len(pokemon_df)
+    st.write(f'Super Mario: {mario_count} games')
+    st.write(f'Pokemon: {pokemon_count} games')
+    # Compare the average user ratings for each franchise
+    mario_rating = mario_df['user_score'].mean()
+    pokemon_rating = pokemon_df['user_score'].mean()
+    st.write(f'Super Mario: {mario_rating:.2f} average rating')
+    st.write(f'Pokemon: {pokemon_rating:.2f} average rating')
+    # Create a bar chart of the number of games released for each franchise
+    fig, ax = plt.subplots()
+    ax.bar(['Super Mario', 'Pokemon'], [mario_count, pokemon_count])
+    ax.set_title('Number of Games Released')
+    ax.set_ylabel('Count')
+    st.pyplot(fig)
+    # Create a new DataFrame with the relevant columns for the box plot
+    boxplot_df = pd.concat([mario_df[['title', 'user_score']].assign(Franchise='Super Mario'),
+                            pokemon_df[['title', 'user_score']].assign(Franchise='Pokemon')])
+    # Create a box plot comparing the user ratings distribution
+    fig_box = px.box(boxplot_df, x='Franchise', y='user_score', color='Franchise',
+                 title='User Ratings Distribution for Super Mario and Pokemon Games',
+                 labels={'Franchise': 'Game Franchise', 'user_score': 'User Rating (out of 10)'})
+    st.plotly_chart(fig_box)
+    
 elif dash == 'Tips for your game':
-
     start_year = st.slider('What is the first year do you want to consider ?', 1996, 2020, 2015)
     df['year'] = df['year'].apply(lambda x : float(x))
     df_tempo = df[df['year']>start_year]
@@ -185,11 +248,16 @@ elif dash == 'Tips for your game':
     st.pyplot(fig3_3)
     
     st.subheader('What about a collaboration ?')
-
+#Extracted from Webscrapping on vgchartz
 elif dash == "What about Sales?":
     st.header("What are the 10 best and 10 worst games ever from Nintendo?")
-    st.write(df_sales)
-    viz_bar4=sns.barplot(data=df_sales, x=df_sales["Names"], y= df_sales["total_shipped_clean"])
-    plt.xticks(rotation=45)
+    st.subheader('Top 10 worst games')
+    st.table(df_sales.head(10))
+    
+    st.subheader('Top 10 best games')
+    st.table(df_sales.tail(10).iloc[::-1])
+    
+    viz_bar4=sns.barplot(data=df_sales.tail(10), x="Names", y= "total_shipped_clean", color = 'red')
+    plt.xticks(rotation=90)
     plt.title('Top 10 Sales')
     st.pyplot((viz_bar4.figure))
